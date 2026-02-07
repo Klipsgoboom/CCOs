@@ -2,14 +2,40 @@ buttons = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
+osVersion = "1.0.1"
 ip = nil
 apiKey = nil
 standing = false
+
+
+function split(str, sep)
+    local t = {}
+    for part in str:gmatch("[^"..sep.."]+") do
+        t[#t+1] = part
+    end
+    return t
+end
+
+
+--load api stuff
+if (fs.exists("flex.settings")) then
+    local file = fs.open("flex.settings", "r")
+    data = file.readAll()
+    data = split(data, ",")
+    ip = data[2]
+    apiKey = data[1]
+    file.close()
+else
+    ip = "none set"
+    apiKey = "none set"
+end
+
+textEntries = {}
+
 local buttonsWork = true
 local file = fs.open("startup", "w")
 file.writeLine('shell.run("CCOs")')
 file.close()
-
 
 function clearButtons() 
 buttons = {}
@@ -51,12 +77,57 @@ if response then
 
     print("Download complete!")
     else
-    print("Failed to download file.")
+    print("Failed to Update.")
     end
     sleep(2)
-    homeScreen()
+    os.reboot()
 
 end
+
+function settings()
+    buttons = {}
+    term.setBackgroundColor(colors.white)
+    term.clear()
+    term.setCursorPos(1, 1)
+    term.setTextColor(colors.black)
+    print("Settings")
+    term.setCursorPos(1, 2)
+    print("OS version " .. osVersion)
+    drawButton(1, 4, 12, 3, "Flex", "flexS")
+    drawButton(1, 8, 12, 3, "Bluetooth", "bt")
+    drawButton(1, 12, 12, 3, "Update", "update")
+    drawButton(24, 1, 3, 2, "X", "exit")
+end
+
+function flexS()
+    buttons = {}
+    term.setBackgroundColor(colors.white)
+    term.clear()
+    term.setBackgroundColor(colors.white)
+    term.setTextColor(colors.black)
+    term.setCursorPos(1, 1)
+    print("Flex Settings")
+    term.setCursorPos(1, 3)
+    print("Current Ip:")
+        term.setCursorPos(1, 4)
+    print(ip)
+    term.setCursorPos(1, 6)
+    print("Current API:")
+        term.setCursorPos(1, 7)
+    print(apiKey)
+
+    term.setCursorPos(1, 9)
+    print("API key")
+    drawButton(1, 10, 26, 2, "", "api")
+        term.setBackgroundColor(colors.white)
+    term.setTextColor(colors.black)
+    term.setCursorPos(1, 13)
+    print("URL")
+    drawButton(1, 14, 26, 2, "", "url")
+    drawButton(1, 18, 26, 3, "Save", "flexSetSettings")
+    drawButton(24, 1, 3, 2, "X", "exit")
+end
+
 
 function bluetoothMenu()
 buttons = {}
@@ -67,13 +138,12 @@ print("Appel Bluetooth")
 
 term.setCursorPos(1, 2)
 print("Detected Devices:")
-drawButton(24, 1, 3, 2, "X", "exit")
 local btDevices = {rednet.lookup("bluetooth")}
 
 for i, btDevice in pairs(btDevices) do
 drawButton(1, 3+(3*(i-1)), 12, 3, "Computer" .. btDevice, "setDevice")
 end
-
+drawButton(24, 1, 3, 2, "X", "exit")
 end
 
 function setBluetooth(btID)
@@ -111,9 +181,6 @@ function requestFlexSong()
 buttons = {}
 local bluetoothId = content
 
-
-
-local baseUrl = ip
 local apiToken = apiKey
 local userId = "0635f662c1764b27b665a6b6eda6a685"
 term.setBackgroundColor(colors.lightBlue)
@@ -125,11 +192,12 @@ print("Request song name:")
 local searchTerm = read()
 
 local function getLibraryItems()
-     local url = baseUrl.."/Users/"..userId.."/Items?ParentId=f6a865777104971fa1a021944a91c9eb&IncludeItemTypes=Audio&Recursive=true"
+     local url = ip.."Users/"..userId.."/Items?ParentId=f6a865777104971fa1a021944a91c9eb&IncludeItemTypes=Audio&Recursive=true"
     local response = http.get(url, { ["X-Emby-Token"] = apiToken })
     if not response then
         print("Failed to fetch library items.")
-        return nil
+        sleep(2)
+        homeScreen()
     end
 
     local body = response.readAll()
@@ -147,20 +215,20 @@ function searchItems(term)
         if string.find(string.lower(item.Name), string.lower(term)) then
             print("Found:", item.Name)
             rednet.open("back")
-            local message = ip .. "/Items/" .. item.Id .. "/Download?api_key=" .. apiKey
-    
-    local file = fs.open("bluetooth.bt", "r")
-    local content = file.readAll() 
-    local targetId = tonumber(content) 
-    file.close()
-    if (content) then
-        rednet.send(targetId, message, "flexSong")
-        print("Requested")
-    else 
-        print("Pair with bluetooth device")
-    end
-    sleep(2)
-        homeScreen()
+            local message = ip .. "Items/" .. item.Id .. "/Download?api_key=" .. apiKey
+            if (fs.exists("bluetooth.bt")) then
+                local file = fs.open("bluetooth.bt", "r")
+                local content = file.readAll() 
+                local targetId = tonumber(content) 
+                file.close()
+                rednet.send(targetId, message, "flexSong")
+                print("Requested")
+            else 
+                print("NO PAIRED SPEAKER")
+                sleep(1)
+            end
+            sleep(2)
+            homeScreen()
         end
     end
 end
@@ -169,7 +237,7 @@ end
 
 
 
-function processButtonClicks(args, name)
+function processButtonClicks(args, name, i)
     if (args == "unlock") then
         homeScreen()
     end
@@ -180,6 +248,9 @@ function processButtonClicks(args, name)
     clearButtons()
     homeScreen()
     end
+        if (args== "settings") then
+        settings()
+    end
     if (args == "setDevice") then
         id = string.sub(name, 9, #name)
         setBluetooth(tonumber(id))
@@ -189,7 +260,17 @@ function processButtonClicks(args, name)
     end
     if (args == "update") then
         updating()
+    end
+    if (args == "flexS") then
+        flexS()
+    end
+    if (args == "flexSetSettings") then
 
+        local file = fs.open("flex.settings", "w")
+        file.writeLine(textEntries["api"] .. "," .. textEntries["url"])
+        file.close()
+        sleep(0.1)
+        homeScreen()
     end
     if (args == "bt") then
         bluetoothMenu()
@@ -204,6 +285,9 @@ function processButtonClicks(args, name)
                 
                 term.setCursorPos(1, 10)
                 print("You lost")
+            elseif (dealerCardsPulled == playerCardsValue) then
+                term.setCursorPos(1, 10)
+                print("You tied")
             else
                 term.setCursorPos(1, 10)
                 print("You won")
@@ -215,22 +299,26 @@ function processButtonClicks(args, name)
     if (args== "flexRequest") then
         requestFlexSong()
     end
+    if (name == "") then
+        --text entry box
+        term.setCursorPos(buttons[i][1], (buttons[i][4] + buttons[i][2])/2)
+        local value = read()
+        textEntries[args] = value
+    end
     if (args == "casinoHit") then
         if (playerCardsDrawn < 5 and playerCardsValue < 21 and standing == false) then
-        playerCardsValue = playerCardsValue + math.random(1,11)
-        playerCardsDrawn = playerCardsDrawn + 1 
-        
-        casinoLoadCards()
-
-        if (playerCardsValue > 21) then
-        term.setCursorPos(1, 9)
-        print("Dealer cards: " .. dealerCardsValue)
-        term.setCursorPos(1, 10)
-        print("You busted")
-        end
-
+            playerCardsValue = playerCardsValue + math.random(1,11)
+            playerCardsDrawn = playerCardsDrawn + 1 
+            casinoLoadCards()
+            if (playerCardsValue > 21) then
+                term.setCursorPos(1, 9)
+                print("Dealer cards: " .. dealerCardsValue)
+                term.setCursorPos(1, 10)
+                print("You busted")
+            end
         end
     end
+
 end
 
 function homeScreen()
@@ -245,8 +333,6 @@ function homeScreen()
     drawButton(1, 3, 12, 3, "Settings", "settings")
     drawButton(15, 3, 12, 3, "Casino", "casino")
     drawButton(1, 7, 12, 3, "Flex", "flexRequest")
-    drawButton(15, 7, 12, 3, "Bluetooth", "bt")
-    drawButton(15, 11, 12, 3, "Update", "update")
     sleep(0.1)
     buttonsWork = true
 end
@@ -257,7 +343,7 @@ function lockScreen()
     term.setCursorBlink(false)
     term.clear()
     term.setCursorPos(1, 1)
-    print("Appel Os 1.0.0")
+    print("Appel Os ".. osVersion)
     drawButton(8, 7, 12, 3, "Unlock", "unlock")
 end
 
@@ -312,12 +398,18 @@ end
 
 lockScreen()
 while true do
-    local event, button, x, y = os.pullEvent("mouse_click")
-    for i=1, #buttons do
-    if (buttons[i] ~= nil and buttonsWork) then
-    if x >= buttons[i][1] and x <= buttons[i][3] and y >= buttons[i][2] and y <= buttons[i][4] then
-        processButtonClicks(buttons[i][5], buttons[i][6])
-    end
-end
-end
+        local event, button, x, y = os.pullEvent("mouse_click")
+        if (buttonsWork) then
+            for i=1, #buttons do
+                if (buttons[i] ~= nil) then
+                    if x >= buttons[i][1] and x <= buttons[i][3] and y >= buttons[i][2] and y <= buttons[i][4] then
+                        processButtonClicks(buttons[i][5], buttons[i][6], i)
+                    end
+                end
+            end
+        event = nil
+        button = nil
+        x = nil
+        y = nil
+        end
 end
