@@ -2,7 +2,7 @@ buttons = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.1"
+osVersion = "1.0.2"
 ip = nil
 apiKey = nil
 standing = false
@@ -119,7 +119,7 @@ function flexS()
     term.setCursorPos(1, 9)
     print("API key")
     drawButton(1, 10, 26, 2, "", "api")
-        term.setBackgroundColor(colors.white)
+    term.setBackgroundColor(colors.white)
     term.setTextColor(colors.black)
     term.setCursorPos(1, 13)
     print("URL")
@@ -269,6 +269,8 @@ function processButtonClicks(args, name, i)
         local file = fs.open("flex.settings", "w")
         file.writeLine(textEntries["api"] .. "," .. textEntries["url"])
         file.close()
+        ip = textEntries["url"]
+        apiKey = textEntries["api"]
         sleep(0.1)
         homeScreen()
     end
@@ -285,7 +287,7 @@ function processButtonClicks(args, name, i)
                 
                 term.setCursorPos(1, 10)
                 print("You lost")
-            elseif (dealerCardsPulled == playerCardsValue) then
+            elseif (dealerCardsValue == playerCardsValue) then
                 term.setCursorPos(1, 10)
                 print("You tied")
             else
@@ -304,6 +306,7 @@ function processButtonClicks(args, name, i)
         term.setCursorPos(buttons[i][1], (buttons[i][4] + buttons[i][2])/2)
         local value = read()
         textEntries[args] = value
+
     end
     if (args == "casinoHit") then
         if (playerCardsDrawn < 5 and playerCardsValue < 21 and standing == false) then
