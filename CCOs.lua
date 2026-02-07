@@ -37,16 +37,21 @@ term.clear()
 term.setCursorPos(1, 1)
 print("Appel Updating")
 
-rednet.send(0, "update", "update")
-    print(os.getComputerID())
-    local id, message = rednet.receive(rednet_message, 2)
-    if id then
-        local file = fs.open("CCOs.lua", "w")
-        file.writeLine(message)
-        file.close()
-        print("Update success")
+
+local url = "https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/CCOs.lua"
+local response = http.get(url)
+
+if response then
+    local content = response.readAll()
+    response.close()
+
+    local file = fs.open("CCOs.lua", "w")
+    file.write(content)
+    file.close()
+
+    print("Download complete!")
     else
-    print("Update failed, server down")
+    print("Failed to download file.")
     end
     sleep(2)
     homeScreen()
