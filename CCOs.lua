@@ -2,11 +2,11 @@ buttons = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.2"
+osVersion = "1.0.3"
 ip = nil
 apiKey = nil
 standing = false
-
+local scene = 0
 
 function split(str, sep)
     local t = {}
@@ -38,6 +38,7 @@ file.writeLine('shell.run("CCOs")')
 file.close()
 
 function clearButtons() 
+scene = math.random(1, 1000000)
 buttons = {}
 end
 
@@ -52,12 +53,12 @@ function drawButton(x, y, width, height, text, args)
     local textY = y + math.floor(height / 2)
     term.setCursorPos(textX, textY)
     term.write(text)
-    buttonObject = {x, y, x+width, y+height, args, text}
+    buttonObject = {x, y, x+width, y+height, args, text, scene}
     table.insert(buttons, buttonObject)
 end
 
 function updating()
-buttons = {}
+clearButtons() 
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
 term.setCursorPos(1, 1)
@@ -85,7 +86,7 @@ if response then
 end
 
 function settings()
-    buttons = {}
+    clearButtons() 
     term.setBackgroundColor(colors.white)
     term.clear()
     term.setCursorPos(1, 1)
@@ -100,7 +101,7 @@ function settings()
 end
 
 function flexS()
-    buttons = {}
+    clearButtons() 
     term.setBackgroundColor(colors.white)
     term.clear()
     term.setBackgroundColor(colors.white)
@@ -130,7 +131,7 @@ end
 
 
 function bluetoothMenu()
-buttons = {}
+clearButtons() 
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
 term.setCursorPos(1, 1)
@@ -143,6 +144,7 @@ local btDevices = {rednet.lookup("bluetooth")}
 for i, btDevice in pairs(btDevices) do
 drawButton(1, 3+(3*(i-1)), 12, 3, "Computer" .. btDevice, "setDevice")
 end
+
 drawButton(24, 1, 3, 2, "X", "exit")
 end
 
@@ -174,11 +176,10 @@ end
 sleep(2)
 homeScreen()
 
-
 end
 
 function requestFlexSong()
-buttons = {}
+clearButtons() 
 local bluetoothId = content
 
 local apiToken = apiKey
@@ -231,8 +232,8 @@ function searchItems(term)
             homeScreen()
         end
     end
-end
-searchItems(searchTerm)
+    end
+    searchItems(searchTerm)
 end
 
 
@@ -325,23 +326,23 @@ function processButtonClicks(args, name, i)
 end
 
 function homeScreen()
-    peripheral.find("modem", rednet.open)
     buttonsWork = false
-    buttons = {}
+    peripheral.find("modem", rednet.open)
+    clearButtons() 
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
     term.setCursorPos(1, 1)
     print("Appel HOME")
+    sleep(0.1)
+    buttonsWork = true
     drawButton(1, 3, 12, 3, "Settings", "settings")
     drawButton(15, 3, 12, 3, "Casino", "casino")
     drawButton(1, 7, 12, 3, "Flex", "flexRequest")
-    sleep(0.1)
-    buttonsWork = true
 end
 
 function lockScreen()
-    buttons = {}
+    clearButtons() 
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
@@ -369,7 +370,7 @@ end
 
 function casino()
     standing = false
-    buttons = {}
+    clearButtons() 
     playerCardsValue = math.random(1, 10)
     term.setBackgroundColor(colors.red)
     term.setCursorBlink(false)
@@ -399,14 +400,13 @@ function casino()
     casinoLoadCards()
 end
 
-lockScreen()
-while true do
-        local event, button, x, y = os.pullEvent("mouse_click")
-        if (buttonsWork) then
+function checkWhatButtonWasClicked(event, button, x, y, sceneWhenClicked)
+    if (buttonsWork) then
             for i=1, #buttons do
-                if (buttons[i] ~= nil) then
+
+                if (buttons[i] ~= nil and buttons[i][7] and sceneWhenClicked == buttons[i][7]) then
                     if x >= buttons[i][1] and x <= buttons[i][3] and y >= buttons[i][2] and y <= buttons[i][4] then
-                        processButtonClicks(buttons[i][5], buttons[i][6], i)
+                            processButtonClicks(buttons[i][5], buttons[i][6], i, scene)
                     end
                 end
             end
@@ -414,5 +414,11 @@ while true do
         button = nil
         x = nil
         y = nil
-        end
+    end
+end
+
+lockScreen()
+while true do
+        local event, button, x, y = os.pullEvent("mouse_up")
+        checkWhatButtonWasClicked(event, button, x, y, scene)
 end
