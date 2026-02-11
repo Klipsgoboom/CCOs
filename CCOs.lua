@@ -2,11 +2,13 @@ buttons = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.3"
+osVersion = "1.0.4"
 ip = nil
 apiKey = nil
 standing = false
 local scene = 0
+
+local backgroundImage = "0000333333333333330000003333,0000000333333333333300000003,0000000000003333333000003333,9993333333333333333333333333,9999999933333333333333333999,9999999999999999999999999999,9999999999999999999999999999,bbbbbb999999999999bbbb999999,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,55bbbbbbbbbbbbbbbbb555bbbbbb,d55bbbbbbbbbbbbb5555dd55555b,dd555555555555555dddddddddd5,ddddddddddddddddddddddddddd5,ddd888888dddddddddddddddddd5,dd88888888ddddddddddddddddd5,ddd88888888dddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,dddddddddddddddddddddddddddd,dddddddddddddddddddddddddddd"
 
 function split(str, sep)
     local t = {}
@@ -16,6 +18,21 @@ function split(str, sep)
     return t
 end
 
+function split(iString, separater) 
+    outputTable = {}
+    lastParition = 1
+
+    for i=1, #iString do
+        if (string.sub(iString, i, i) == separater) then
+            table.insert(outputTable, string.sub(iString, lastParition, i-1))
+            lastParition = i+1
+        end
+        if (i == #iString) then
+            table.insert(outputTable, string.sub(iString, lastParition, i))
+        end
+    end
+    return(outputTable)
+end
 
 --load api stuff
 if (fs.exists("flex.settings")) then
@@ -35,6 +52,10 @@ textEntries = {}
 local buttonsWork = true
 local file = fs.open("startup", "w")
 file.writeLine('shell.run("CCOs")')
+file.close()
+
+local file = fs.open("baseBg", "w")
+file.writeLine(backgroundImage)
 file.close()
 
 function clearButtons() 
@@ -178,12 +199,51 @@ homeScreen()
 
 end
 
+local function getFlexLibraryItems()
+local userId = "0635f662c1764b27b665a6b6eda6a685"
+     local url = ip.."Users/"..userId.."/Items?ParentId=f6a865777104971fa1a021944a91c9eb&IncludeItemTypes=Audio&Recursive=true"
+    local response = http.get(url, { ["X-Emby-Token"] = apiKey })
+    if not response then
+        print("Failed to fetch library items.")
+        sleep(2)
+        homeScreen()
+    else
+
+    local body = response.readAll()
+    response.close()
+
+    local data = textutils.unserializeJSON(body)
+    return data and data.Items or nil
+    end
+end
+
+
+function flexMenu()
+    clearButtons() 
+    term.setBackgroundColor(colors.black)
+    term.setCursorBlink(false)
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("FLEX APP")
+
+    entries = getFlexLibraryItems()
+    for entryNumber, entry in ipairs(entries) do
+        if ((3*entryNumber) < 20) then
+            shortHandEntryName = entry.Name
+            --get rid of any non alphabet characters
+            shortHandEntryName = string.gsub(shortHandEntryName, "'", "")
+            shortHandEntryName = shortHandEntryName:gsub("[^%w%s]", "")
+            shortHandEntryName = shortHandEntryName:sub(1, 15)
+            --print(shortHandEntryName)
+            drawButton(1, (3*entryNumber), 20, 3, shortHandEntryName, "song," .. entry.Id)
+        end
+    end
+
+end
+
 function requestFlexSong()
 clearButtons() 
 local bluetoothId = content
-
-local apiToken = apiKey
-local userId = "0635f662c1764b27b665a6b6eda6a685"
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
 term.setCursorPos(1, 1)
@@ -192,24 +252,8 @@ term.setCursorPos(1, 2)
 print("Request song name:")
 local searchTerm = read()
 
-local function getLibraryItems()
-     local url = ip.."Users/"..userId.."/Items?ParentId=f6a865777104971fa1a021944a91c9eb&IncludeItemTypes=Audio&Recursive=true"
-    local response = http.get(url, { ["X-Emby-Token"] = apiToken })
-    if not response then
-        print("Failed to fetch library items.")
-        sleep(2)
-        homeScreen()
-    end
-
-    local body = response.readAll()
-    response.close()
-
-    local data = textutils.unserializeJSON(body)
-    return data and data.Items or nil
-end
-
 function searchItems(term)
-    local items = getLibraryItems()
+    local items = getFlexLibraryItems()
     if not items then return end
 
     for _, item in ipairs(items) do
@@ -249,7 +293,7 @@ function processButtonClicks(args, name, i)
     clearButtons()
     homeScreen()
     end
-        if (args== "settings") then
+    if (args== "settings") then
         settings()
     end
     if (args == "setDevice") then
@@ -278,6 +322,19 @@ function processButtonClicks(args, name, i)
     if (args == "bt") then
         bluetoothMenu()
     end
+    if (#split(args, ",") > 1 and split(args, ",")[1] == "song") then
+            if (fs.exists("bluetooth.bt")) then
+                local file = fs.open("bluetooth.bt", "r")
+                local targetId = file.readAll() 
+                file.close()
+                local message = ip .. "Items/" .. split(args, ",")[2] .. "/Download?api_key=" .. apiKey
+                rednet.send(tonumber(targetId), message, "flexSong")
+                print("Requested")
+            else 
+                print("NO PAIRED SPEAKER")
+                sleep(1)
+            end
+    end
     if (args == "casinoStand") then
         if (playerCardsValue <= 21 and playerCardsDrawn <= 5) then
                 standing = true
@@ -300,7 +357,7 @@ function processButtonClicks(args, name, i)
         end
     end
     if (args== "flexRequest") then
-        requestFlexSong()
+        flexMenu()
     end
     if (name == "") then
         --text entry box
@@ -339,6 +396,7 @@ function homeScreen()
     drawButton(1, 3, 12, 3, "Settings", "settings")
     drawButton(15, 3, 12, 3, "Casino", "casino")
     drawButton(1, 7, 12, 3, "Flex", "flexRequest")
+    drawButton(15, 7, 12, 3, "App store", "appStore")
 end
 
 function lockScreen()
@@ -346,6 +404,7 @@ function lockScreen()
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
+    drawImage("baseBg")
     term.setCursorPos(1, 1)
     print("Appel Os ".. osVersion)
     drawButton(8, 7, 12, 3, "Unlock", "unlock")
@@ -415,6 +474,97 @@ function checkWhatButtonWasClicked(event, button, x, y, sceneWhenClicked)
         x = nil
         y = nil
     end
+end
+
+function drawImage(fileName)
+    --[[
+		NPaintPro
+		By NitrogenFingers
+    ]]--
+    --This is just re-assembled npaintpro code that only displays an image
+
+    local w,h = term.getSize()
+    local canvas = {}
+    local leftColour, rightColour = colours.white, nil
+    local canvasColour = colours.black
+    local function getCanvasPixel( x, y )
+        if canvas[y] then
+            return canvas[y][x]
+        end
+        return nil
+    end
+    local function getCharOf( colour )
+	    if type(colour) == "number" then
+		    local value = math.floor( math.log(colour) / math.log(2) ) + 1
+		    if value >= 1 and value <= 16 then
+			    return string.sub( "0123456789abcdef", value, value )
+		    end
+	    end
+	    return " "
+    end	
+    local tColourLookup = {}
+    for n=1,16 do
+	    tColourLookup[ string.byte( "0123456789abcdef",n,n ) ] = 2^(n-1)
+    end
+    local function getColourOf( char )
+	    return tColourLookup[char]
+    end
+    local function drawCanvasPixel( x, y )
+	    local pixel = getCanvasPixel( x, y )
+	    if pixel then
+		    term.setBackgroundColour( pixel or canvasColour )
+		    term.setCursorPos(x, y)
+		    term.write(" ")
+	    else
+		    term.setBackgroundColour( canvasColour )
+		    term.setTextColour( canvasColour )
+		    term.setCursorPos(x, y)
+            term.write("-")
+	    end
+    end
+    local function drawCanvasLine( y )
+	    for x = 1, w do
+		    drawCanvasPixel( x, y )
+	    end
+    end
+    local function drawCanvas()
+	    for y = 1, h do
+		    drawCanvasLine( y )
+	    end
+    end
+    local function load(path)
+	    if fs.exists(path) then
+		    local file = fs.open(path, "r")
+            --[[
+		    local sLine = file.readLine()
+		    while sLine do
+			    local line = {}
+			    for x=1,w do
+				    line[x] = getColourOf( string.byte(sLine,x,x) )
+			    end
+			    table.insert( canvas, line )
+			    sLine = file.readLine()
+		    end
+            --]]
+
+            local allLines = file.readAll()
+            local lines = split(allLines, ",")
+
+            for i=1, #lines do
+			    local line = {}
+			    for x=1,w do
+				    line[x] = getColourOf(string.byte(lines[i],x,x) )
+			    end
+			    table.insert( canvas, line )
+		    end
+
+
+		    file.close()
+	    end
+    end
+
+    load(fileName)
+    drawCanvas()
 end
 
 lockScreen()
