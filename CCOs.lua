@@ -1,12 +1,15 @@
 buttons = {}
+sprites = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.4"
+osVersion = "1.0.5"
 ip = nil
 apiKey = nil
 standing = false
 local scene = 0
+yOffset = 0
+
 
 local backgroundImage = "0000333333333333330000003333,0000000333333333333300000003,0000000000003333333000003333,9993333333333333333333333333,9999999933333333333333333999,9999999999999999999999999999,9999999999999999999999999999,bbbbbb999999999999bbbb999999,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,55bbbbbbbbbbbbbbbbb555bbbbbb,d55bbbbbbbbbbbbb5555dd55555b,dd555555555555555dddddddddd5,ddddddddddddddddddddddddddd5,ddd888888dddddddddddddddddd5,dd88888888ddddddddddddddddd5,ddd88888888dddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,dddddddddddddddddddddddddddd,dddddddddddddddddddddddddddd"
 
@@ -58,32 +61,94 @@ local file = fs.open("baseBg", "w")
 file.writeLine(backgroundImage)
 file.close()
 
-function clearButtons() 
+function clearSprites() 
 scene = math.random(1, 1000000)
-buttons = {}
+yOffset = 0
+sprites = {}
 end
 
-function drawButton(x, y, width, height, text, args)
-    term.setBackgroundColor(colors.gray)
-    term.setTextColor(colors.white)
-    for i = 0, height-1 do
-        term.setCursorPos(x, y+i)
-        term.write(string.rep(" ", width))
+function drawObject(object)
+    previousColor = term.getBackgroundColor()
+        local sprite = {}
+        sprite = sprites[object]
+        name = sprite[1]
+        x = sprite[2]
+        y = sprite[3]
+        width = sprite[4]
+        height = sprite[5]
+        typeA = sprite[6]
+        rotation = sprite[7]
+        src = sprite[8]
+        text = sprite[9]
+        args = sprite[10]
+        z = sprite[11]
+        static = sprite[12]
+        lScene = sprite[13]
+        baseX = sprite[14]
+        baseY = sprite[15]
+
+        if (typeA == "text") then
+            term.setCursorPos(x, y)
+            term.setTextColor(args) --just using args for color
+            term.write(text)
+        end
+        if (typeA == "button") then
+            term.setBackgroundColor(colors.gray)
+            term.setTextColor(colors.white)
+            for i = 0, height-1 do
+                term.setCursorPos(x, y+i)
+                term.write(string.rep(" ", width))
+            end
+
+            local textX = x + math.floor((width - #text) / 2)
+            local textY = y + math.floor(height / 2)
+            term.setCursorPos(textX, textY)
+            term.write(text)
+        end
+        if (typeA == "image") then
+            drawImage(src)
+        end
+
+        term.setBackgroundColor(previousColor)
+end
+
+function drawAllObjects()
+    term.clear()
+    for i=1, #sprites do
+        drawObject(i)
     end
-    local textX = x + math.floor((width - #text) / 2)
-    local textY = y + math.floor(height / 2)
-    term.setCursorPos(textX, textY)
-    term.write(text)
-    buttonObject = {x, y, x+width, y+height, args, text, scene}
-    table.insert(buttons, buttonObject)
+end
+
+function drawButton()
+
+end
+
+function createSprite(name, x, y, width, height, typeA, rotation, src, text, args, z, static)
+    spriteObject = {name, x, y, width, height, typeA, rotation, src, text, args, z, static, scene, x, y}
+    table.insert(sprites, spriteObject)
+    drawObject(#sprites)
+end
+
+function createText(x,y,text,static,color)
+    if (color == nil) then
+        color = colors.white
+    end
+    createSprite("textbox", x, y, 0, 0, "text", 0, 0, text, color, 0, static)
+end
+
+function createImage(src)
+    createSprite("image", 0, 0, 0, 0, "image", 0, src, 0, 0, 0, true)
+end
+
+function createButton(x,y,w,h,text,args,static)
+    createSprite("btn", x, y, w, h, "button", 0, src, text, args, 0, static)
 end
 
 function updating()
-clearButtons() 
+clearSprites() 
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
-term.setCursorPos(1, 1)
-print("Appel Updating")
+createText(1,1, "Appel Updating", true)
 
 
 local url = "https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/CCOs.lua"
@@ -97,7 +162,7 @@ if response then
     file.write(content)
     file.close()
 
-    print("Download complete!")
+    createText(1,3, "Download Complete!", true, colors.white)
     else
     print("Failed to Update.")
     end
@@ -107,77 +172,69 @@ if response then
 end
 
 function settings()
-    clearButtons() 
+    clearSprites() 
     term.setBackgroundColor(colors.white)
     term.clear()
     term.setCursorPos(1, 1)
     term.setTextColor(colors.black)
-    print("Settings")
-    term.setCursorPos(1, 2)
-    print("OS version " .. osVersion)
-    drawButton(1, 4, 12, 3, "Flex", "flexS")
-    drawButton(1, 8, 12, 3, "Bluetooth", "bt")
-    drawButton(1, 12, 12, 3, "Update", "update")
-    drawButton(24, 1, 3, 2, "X", "exit")
+    createText(1,1, "Settings", true, colors.black)
+    createText(1,2, "OS version " .. osVersion, true, colors.black)
+    
+    createSprite("btn", 1, 4, 12, 3, "button", 0, 0, "Flex", "flexS", 0, true)
+    createSprite("btn", 1, 8, 12, 3, "button", 0, 0, "Bluetooth", "bt", 0, true)
+    createSprite("btn", 1, 12, 12, 3, "button", 0, 0, "Update", "update", 0, true)
+    createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
 end
 
 function flexS()
-    clearButtons() 
+    clearSprites() 
     term.setBackgroundColor(colors.white)
     term.clear()
     term.setBackgroundColor(colors.white)
     term.setTextColor(colors.black)
-    term.setCursorPos(1, 1)
-    print("Flex Settings")
-    term.setCursorPos(1, 3)
-    print("Current Ip:")
-        term.setCursorPos(1, 4)
-    print(ip)
-    term.setCursorPos(1, 6)
-    print("Current API:")
-        term.setCursorPos(1, 7)
-    print(apiKey)
+    
+    createText(1,1, "Flex Settings", true, colors.black)
+    createText(1,3, "Current Ip:", true, colors.black)
+    createText(1,4, ip, true, colors.black)
+    createText(1,6, "Current API:", true, colors.black)
+    createText(1,7, apiKey, true, colors.black)
 
-    term.setCursorPos(1, 9)
-    print("API key")
-    drawButton(1, 10, 26, 2, "", "api")
+    createText(1,9, "Api Key", true, colors.black)
+    createButton(1,10,26,2,"","api", true)
     term.setBackgroundColor(colors.white)
     term.setTextColor(colors.black)
-    term.setCursorPos(1, 13)
-    print("URL")
-    drawButton(1, 14, 26, 2, "", "url")
-    drawButton(1, 18, 26, 3, "Save", "flexSetSettings")
-    drawButton(24, 1, 3, 2, "X", "exit")
+    createText(1,13, "Url", true, colors.black)
+
+    createButton(1,14,26,2,"","url", true)
+    createButton(1,18,26,3,"save","flexSetSettings", true)
+    createButton(24,1,3,2,"X","exit", true)
+
 end
 
 
 function bluetoothMenu()
-clearButtons() 
+clearSprites() 
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
-term.setCursorPos(1, 1)
-print("Appel Bluetooth")
+createText(1,1, "Appel Bluetooth", true)
 
-term.setCursorPos(1, 2)
-print("Detected Devices:")
+createText(1,2, "Detected Devices", true)
 local btDevices = {rednet.lookup("bluetooth")}
 
 for i, btDevice in pairs(btDevices) do
-drawButton(1, 3+(3*(i-1)), 12, 3, "Computer" .. btDevice, "setDevice")
+createButton(1,3+(3*(i-1)),12,3,"Computer" .. btDevice,"setDevice", true)
 end
 
-drawButton(24, 1, 3, 2, "X", "exit")
+createButton(24,1,3,2,"X","exit", true)
 end
 
 function setBluetooth(btID)
     term.setBackgroundColor(colors.lightBlue)
     term.clear()
-    term.setCursorPos(1, 1)
-    print("Appel Bluetooth")
+    createText(1,1, "Appel Bluetooth", true)
     local bluetooth
     if (not btID) then
-        term.setCursorPos(1, 3)
-        print("Type the ID of your device:")
+        createText(1,3, "Type the ID of your device:", true)
         bluetooth = read()
     else
         bluetooth = btID
@@ -188,11 +245,10 @@ function setBluetooth(btID)
         local file = fs.open("bluetooth.bt", "w")
         file.writeLine(bluetooth)
         file.close()
-        term.setCursorPos(1, 5)
-        print("Connected!")
+        createText(1,5, "Connected", true)
     else
         term.setCursorPos(1, 5)
-        print("Cannot find device, bluetooth not set.")
+        createText(1,5, "Cannot find device, bluetooth not set.", true)
 end
 sleep(2)
 homeScreen()
@@ -219,37 +275,35 @@ end
 
 
 function flexMenu()
-    clearButtons() 
+    clearSprites() 
     term.setBackgroundColor(colors.black)
     term.setCursorBlink(false)
     term.clear()
-    term.setCursorPos(1, 1)
-    print("FLEX APP")
+    createText(1,1, "FLEX app", true)
+    createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
 
     entries = getFlexLibraryItems()
     for entryNumber, entry in ipairs(entries) do
-        if ((3*entryNumber) < 20) then
+
             shortHandEntryName = entry.Name
             --get rid of any non alphabet characters
             shortHandEntryName = string.gsub(shortHandEntryName, "'", "")
             shortHandEntryName = shortHandEntryName:gsub("[^%w%s]", "")
             shortHandEntryName = shortHandEntryName:sub(1, 15)
             --print(shortHandEntryName)
-            drawButton(1, (3*entryNumber), 20, 3, shortHandEntryName, "song," .. entry.Id)
-        end
+            createButton(1,(3*entryNumber),20,3,shortHandEntryName,"song," .. entry.Id, false)
+
     end
 
 end
 
 function requestFlexSong()
-clearButtons() 
+clearSprites() 
 local bluetoothId = content
 term.setBackgroundColor(colors.lightBlue)
 term.clear()
-term.setCursorPos(1, 1)
-print("Flex Song Search")
-term.setCursorPos(1, 2)
-print("Request song name:")
+createText(1,1, "Flex Song Search", true)
+createText(1,2, "Request song name:", true)
 local searchTerm = read()
 
 function searchItems(term)
@@ -290,7 +344,7 @@ function processButtonClicks(args, name, i)
     playerCardsValue = 0
     playerCardsDrawn = 0
 
-    clearButtons()
+    clearSprites()
     homeScreen()
     end
     if (args== "settings") then
@@ -329,7 +383,7 @@ function processButtonClicks(args, name, i)
                 file.close()
                 local message = ip .. "Items/" .. split(args, ",")[2] .. "/Download?api_key=" .. apiKey
                 rednet.send(tonumber(targetId), message, "flexSong")
-                print("Requested")
+                homeScreen()
             else 
                 print("NO PAIRED SPEAKER")
                 sleep(1)
@@ -338,19 +392,16 @@ function processButtonClicks(args, name, i)
     if (args == "casinoStand") then
         if (playerCardsValue <= 21 and playerCardsDrawn <= 5) then
                 standing = true
-                term.setCursorPos(1, 9)
-                print("Dealer cards: " .. dealerCardsValue)
+                createText(1,9, "Dealer cards: " .. dealerCardsValue, true)
             --figure out who won BJ
             if (dealerCardsValue > playerCardsValue and dealerCardsValue <= 21) then
                 
                 term.setCursorPos(1, 10)
-                print("You lost")
+                createText(1,10, "You lost", true)
             elseif (dealerCardsValue == playerCardsValue) then
-                term.setCursorPos(1, 10)
-                print("You tied")
+                createText(1,10, "You tied", true)
             else
-                term.setCursorPos(1, 10)
-                print("You won")
+                createText(1,10, "You won", true)
             end
 
 
@@ -361,9 +412,13 @@ function processButtonClicks(args, name, i)
     end
     if (name == "") then
         --text entry box
-        term.setCursorPos(buttons[i][1], (buttons[i][4] + buttons[i][2])/2)
+        preserveOriginalBgColor = term.getBackgroundColor()
+        term.setTextColor(colors.white)
+        term.setBackgroundColor(colors.gray)
+        term.setCursorPos(sprites[i][2], sprites[i][3] + (sprites[i][5])/2)
         local value = read()
         textEntries[args] = value
+        term.setBackgroundColor(preserveOriginalBgColor)
 
     end
     if (args == "casinoHit") then
@@ -372,10 +427,8 @@ function processButtonClicks(args, name, i)
             playerCardsDrawn = playerCardsDrawn + 1 
             casinoLoadCards()
             if (playerCardsValue > 21) then
-                term.setCursorPos(1, 9)
-                print("Dealer cards: " .. dealerCardsValue)
-                term.setCursorPos(1, 10)
-                print("You busted")
+                createText(1,9, "Dealer cards: " .. dealerCardsValue, true)
+                createText(1,10, "You busted", true)
             end
         end
     end
@@ -385,60 +438,53 @@ end
 function homeScreen()
     buttonsWork = false
     peripheral.find("modem", rednet.open)
-    clearButtons() 
+    clearSprites() 
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
-    term.setCursorPos(1, 1)
-    print("Appel HOME")
+    createText(1,1, "Appel Home", true)
     sleep(0.1)
     buttonsWork = true
-    drawButton(1, 3, 12, 3, "Settings", "settings")
-    drawButton(15, 3, 12, 3, "Casino", "casino")
-    drawButton(1, 7, 12, 3, "Flex", "flexRequest")
-    drawButton(15, 7, 12, 3, "App store", "appStore")
+    createSprite("btn", 1, 3, 12, 3, "button", 0, 0, "Settings", "settings", 0, true)
+    createSprite("btn", 15, 3, 12, 3, "button", 0, 0, "Casino", "casino", 0, true)
+    createSprite("btn", 1, 7, 12, 3, "button", 0, 0, "Flex", "flexRequest", 0, true)
+    createSprite("btn", 15, 7, 12, 3, "button", 0, 0, "App store", "appStore", 0, true)
+
 end
 
 function lockScreen()
-    clearButtons() 
+    clearSprites() 
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
-    drawImage("baseBg")
-    term.setCursorPos(1, 1)
-    print("Appel Os ".. osVersion)
-    drawButton(8, 7, 12, 3, "Unlock", "unlock")
+    createImage("baseBg")
+    createText(1,1, "Appel Os " .. osVersion, true)
+    createSprite("btn", 8, 7, 12, 3, "button", 0, 0, "Unlock", "unlock", 0, true)
 end
 
 function casinoLoadCards()
-    term.setCursorPos(1, 3)
     term.setBackgroundColor(colors.red)
-    print("You have drawn ")
-    term.setCursorPos(16, 3)
-    print(playerCardsDrawn)
-    term.setCursorPos(17, 3)
-    print(" Cards")
-    term.setCursorPos(1, 5)
+    createText(1,3, "You have drawn", true)
+    createText(16,3, playerCardsDrawn, true)
+    createText(17,3, " cards", true)
     term.setBackgroundColor(colors.red)
-    print("You have ")
-    term.setCursorPos(10, 5)
-    print(playerCardsValue)
-    term.setCursorPos(12, 5)
-    print(" Value")
+    createText(1,5, "You have", true)
+    createText(10,5, playerCardsValue, true)
+    createText(12,5, " Value", true)
 end
 
 function casino()
     standing = false
-    clearButtons() 
+    clearSprites() 
     playerCardsValue = math.random(1, 10)
     term.setBackgroundColor(colors.red)
     term.setCursorBlink(false)
     term.clear()
-    term.setCursorPos(1, 1)
-    print("Appel Casino")
-    drawButton(24, 1, 3, 2, "X", "exit")
-    drawButton(1, 18, 12, 3, "Hit", "casinoHit")
-    drawButton(15, 18, 12, 3, "Stand", "casinoStand")
+    createText(1,1, "Appel Casino", true)
+    createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
+
+    createSprite("btn", 1, 18, 12, 3, "button", 0, 0, "Hit", "casinoHit", 0, true)
+    createSprite("btn", 15, 18, 12, 3, "button", 0, 0, "Stand", "casinoStand", 0, true)
     dealerCardsValue = 0
     
     for dealerCardsPulled=0, 5 do
@@ -452,20 +498,33 @@ function casino()
     playerCardsDrawn = 2
     playerCardsValue = math.random(1,20)
 
-    term.setCursorPos(1, 3)
     term.setBackgroundColor(colors.red)
-    print("Dealing...")
+    createText(1,3, "Dealing...", true)
     sleep(0.750)
     casinoLoadCards()
 end
 
-function checkWhatButtonWasClicked(event, button, x, y, sceneWhenClicked)
+function checkWhatButtonWasClicked(event, button, xC, yC, sceneWhenClicked)
     if (buttonsWork) then
-            for i=1, #buttons do
-
-                if (buttons[i] ~= nil and buttons[i][7] and sceneWhenClicked == buttons[i][7]) then
-                    if x >= buttons[i][1] and x <= buttons[i][3] and y >= buttons[i][2] and y <= buttons[i][4] then
-                            processButtonClicks(buttons[i][5], buttons[i][6], i, scene)
+        for i, sprite in ipairs(sprites) do
+        name = sprite[1]
+        x = sprite[2]
+        y = sprite[3]
+        width = sprite[4]
+        height = sprite[5]
+        typeA = sprite[6]
+        rotation = sprite[7]
+        src = sprite[8]
+        text = sprite[9]
+        args = sprite[10]
+        z = sprite[11]
+        static = sprite[12]
+        lScene = sprite[13]
+        baseX = sprite[14]
+        baseY = sprite[15]
+                if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "button") then
+                    if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
+                            processButtonClicks(args, text, i, scene)
                     end
                 end
             end
@@ -535,18 +594,6 @@ function drawImage(fileName)
     local function load(path)
 	    if fs.exists(path) then
 		    local file = fs.open(path, "r")
-            --[[
-		    local sLine = file.readLine()
-		    while sLine do
-			    local line = {}
-			    for x=1,w do
-				    line[x] = getColourOf( string.byte(sLine,x,x) )
-			    end
-			    table.insert( canvas, line )
-			    sLine = file.readLine()
-		    end
-            --]]
-
             local allLines = file.readAll()
             local lines = split(allLines, ",")
 
@@ -558,7 +605,6 @@ function drawImage(fileName)
 			    table.insert( canvas, line )
 		    end
 
-
 		    file.close()
 	    end
     end
@@ -568,7 +614,64 @@ function drawImage(fileName)
 end
 
 lockScreen()
+
+function reDrawButtons()
+    previousColor = term.getBackgroundColor()
+    term.clear()
+    for i=1, #buttons do
+        --buttonObject = {x, y, x+width, y+height, args, text, scene}
+        local x = buttons[i][8]
+        local y = tonumber(buttons[i][9]) + yOffset
+        local width = buttons[i][3]-x
+        local height = buttons[i][4]-tonumber(buttons[i][2])
+        local args = buttons[i][5]
+        local text = buttons[i][6]
+        local scene = scene
+        term.setBackgroundColor(colors.gray)
+        term.setTextColor(colors.white)
+        for i = 0, height-1 do
+            term.setCursorPos(x, y+i)
+            term.write(string.rep(" ", width))
+        end
+
+        local textX = x + math.floor((width - #text) / 2)
+        local textY = y + math.floor(height / 2)
+        term.setCursorPos(textX, textY)
+        term.write(text)
+
+        --update hitbox
+        buttons[i][2] = y
+        buttons[i][4] = height+y
+    end
+    term.setBackgroundColor(previousColor)
+end
+
+function transformNonStaticObjects()
+    for i, sprite in ipairs(sprites) do
+        static = sprite[12]
+
+        if (static ~= true) then
+            sprites[i][3] = sprites[i][15] + yOffset
+        end
+    end
+end
+
 while true do
-        local event, button, x, y = os.pullEvent("mouse_up")
+    local event, p1, p2, p3 = os.pullEvent()
+    if (event == "mouse_scroll") then
+        local direction = p1
+        if direction == 1 then
+            yOffset = yOffset - 2
+        elseif direction == -1 then
+            yOffset = yOffset + 2
+        end
+        transformNonStaticObjects()
+        drawAllObjects()
+    end
+    if (event == "mouse_up") then
+        local button = p1
+        local x = p2
+        local y = p3
         checkWhatButtonWasClicked(event, button, x, y, scene)
+    end
 end
