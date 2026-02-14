@@ -3,15 +3,12 @@ sprites = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.5"
+osVersion = "1.0.6"
 ip = nil
 apiKey = nil
 standing = false
 local scene = 0
 yOffset = 0
-
-
-local backgroundImage = "0000333333333333330000003333,0000000333333333333300000003,0000000000003333333000003333,9993333333333333333333333333,9999999933333333333333333999,9999999999999999999999999999,9999999999999999999999999999,bbbbbb999999999999bbbb999999,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,bbbbbbbbbbbbbbbbbbbbbbbbbbbb,55bbbbbbbbbbbbbbbbb555bbbbbb,d55bbbbbbbbbbbbb5555dd55555b,dd555555555555555dddddddddd5,ddddddddddddddddddddddddddd5,ddd888888dddddddddddddddddd5,dd88888888ddddddddddddddddd5,ddd88888888dddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,ddddddddddddddddddddddddddd5,dddddddddddddddddddddddddddd,dddddddddddddddddddddddddddd"
 
 function split(str, sep)
     local t = {}
@@ -37,6 +34,20 @@ function split(iString, separater)
     return(outputTable)
 end
 
+function webRequestDownload(url, fileName)
+local response = http.get(url)
+
+if response then
+    local content = response.readAll()
+    response.close()
+    local file = fs.open(fileName, "w")
+    file.writeLine(content)
+    file.close()
+else
+    return nil
+end
+end
+
 --load api stuff
 if (fs.exists("flex.settings")) then
     local file = fs.open("flex.settings", "r")
@@ -57,9 +68,17 @@ local file = fs.open("startup", "w")
 file.writeLine('shell.run("CCOs")')
 file.close()
 
-local file = fs.open("baseBg", "w")
-file.writeLine(backgroundImage)
+
+if (not fs.exists("flex.settings")) then
+local file = fs.open("startup", "w")
+file.writeLine('shell.run("CCOs")')
 file.close()
+end
+
+
+if (not fs.exists("lockscreen.nfa")) then
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/drawing.nfa", "lockscreen.nfa")
+end
 
 function clearSprites() 
 scene = math.random(1, 1000000)
@@ -163,12 +182,11 @@ if response then
     file.close()
 
     createText(1,3, "Download Complete!", true, colors.white)
-    else
+else
     print("Failed to Update.")
-    end
+end
     sleep(2)
     os.reboot()
-
 end
 
 function settings()
@@ -322,7 +340,7 @@ function searchItems(term)
                 file.close()
                 rednet.send(targetId, message, "flexSong")
                 print("Requested")
-            else 
+            else
                 print("NO PAIRED SPEAKER")
                 sleep(1)
             end
@@ -363,6 +381,9 @@ function processButtonClicks(args, name, i)
     if (args == "flexS") then
         flexS()
     end
+    if (args == "appStore") then
+        playAnim()
+    end
     if (args == "flexSetSettings") then
 
         local file = fs.open("flex.settings", "w")
@@ -385,8 +406,11 @@ function processButtonClicks(args, name, i)
                 rednet.send(tonumber(targetId), message, "flexSong")
                 homeScreen()
             else 
+                term.clear()
+                term.setCursorPos(1,1)
                 print("NO PAIRED SPEAKER")
                 sleep(1)
+                homeScreen()
             end
     end
     if (args == "casinoStand") then
@@ -395,7 +419,6 @@ function processButtonClicks(args, name, i)
                 createText(1,9, "Dealer cards: " .. dealerCardsValue, true)
             --figure out who won BJ
             if (dealerCardsValue > playerCardsValue and dealerCardsValue <= 21) then
-                
                 term.setCursorPos(1, 10)
                 createText(1,10, "You lost", true)
             elseif (dealerCardsValue == playerCardsValue) then
@@ -403,6 +426,8 @@ function processButtonClicks(args, name, i)
             else
                 createText(1,10, "You won", true)
             end
+            sleep(1.5)
+            casino()
 
 
         end
@@ -429,6 +454,8 @@ function processButtonClicks(args, name, i)
             if (playerCardsValue > 21) then
                 createText(1,9, "Dealer cards: " .. dealerCardsValue, true)
                 createText(1,10, "You busted", true)
+                sleep(1.5)
+            casino()
             end
         end
     end
@@ -448,7 +475,7 @@ function homeScreen()
     createSprite("btn", 1, 3, 12, 3, "button", 0, 0, "Settings", "settings", 0, true)
     createSprite("btn", 15, 3, 12, 3, "button", 0, 0, "Casino", "casino", 0, true)
     createSprite("btn", 1, 7, 12, 3, "button", 0, 0, "Flex", "flexRequest", 0, true)
-    createSprite("btn", 15, 7, 12, 3, "button", 0, 0, "App store", "appStore", 0, true)
+    --createSprite("btn", 15, 7, 12, 3, "button", 0, 0, "App store", "appStore", 0, true)
 
 end
 
@@ -457,7 +484,7 @@ function lockScreen()
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
-    createImage("baseBg")
+    createImage("lockscreen.nfa")
     createText(1,1, "Appel Os " .. osVersion, true)
     createSprite("btn", 8, 7, 12, 3, "button", 0, 0, "Unlock", "unlock", 0, true)
 end
@@ -535,7 +562,7 @@ function checkWhatButtonWasClicked(event, button, xC, yC, sceneWhenClicked)
     end
 end
 
-function drawImage(fileName)
+function drawImage(fileName, frame)
     --[[
 		NPaintPro
 		By NitrogenFingers
@@ -591,12 +618,17 @@ function drawImage(fileName)
 		    drawCanvasLine( y )
 	    end
     end
-    local function load(path)
+    function load(path)
+        if (not frame) then
+            frame = 1
+        end
 	    if fs.exists(path) then
 		    local file = fs.open(path, "r")
-            local allLines = file.readAll()
-            local lines = split(allLines, ",")
-
+            local allFrames = file.readAll()
+            allFrames = split(allFrames, "|")
+            local allLines = split(allFrames[frame], ",")
+            local lines = allLines
+            
             for i=1, #lines do
 			    local line = {}
 			    for x=1,w do
@@ -611,6 +643,13 @@ function drawImage(fileName)
 
     load(fileName)
     drawCanvas()
+end
+
+function playAnim()
+    for i=1, 7 do
+    drawImage("animation.nfa", i)
+    sleep(0.2)
+    end
 end
 
 lockScreen()

@@ -4,6 +4,15 @@
 ]]--
 --This is just re-assembled npaintpro code that only displays an image
 
+
+function split(str, sep)
+    local t = {}
+    for part in str:gmatch("[^"..sep.."]+") do
+        t[#t+1] = part
+    end
+    return t
+end
+
 local w,h = term.getSize()
 local canvas = {}
 
@@ -62,19 +71,22 @@ local function drawCanvas()
 end
 
 local function load(path)
-	if fs.exists(path) then
-		local file = fs.open(path, "r")
-		local sLine = file.readLine()
-		while sLine do
-			local line = {}
-			for x=1,w-2 do
-				line[x] = getColourOf( string.byte(sLine,x,x) )
-			end
-			table.insert( canvas, line )
-			sLine = file.readLine()
-		end
-		file.close()
-	end
+		    if fs.exists(path) then
+		    local file = fs.open(path, "r")
+            local allLines = file.readAll()
+			allLines = split(allLines, "|")[1]
+            local lines = split(allLines, ",")
+
+            for i=1, #lines do
+			    local line = {}
+			    for x=1,w do
+				    line[x] = getColourOf(string.byte(lines[i],x,x) )
+			    end
+			    table.insert( canvas, line )
+		    end
+
+		    file.close()
+	    end
 end
 
 local file = read()

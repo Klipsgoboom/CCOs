@@ -31,7 +31,7 @@ local printer = nil
 --Note: nfp files always have the picture at frame 1
 local frames = { }
 --How many frames are currently in the given animation.
-local frameCount = 1
+local framecount = 1
 --The Colour Picker column
 local column = {}
 --The currently selected left and right colours
@@ -300,11 +300,11 @@ local helpTopics = {
 		}
 	},
 	[14] = {
-		name = "About NPaintPro",
+		name = "About NPaintPro MODIFIED",
 		keys = nil,
 		animonly = false,
 		textonly = false,
-		message = "NPaintPro: The feature-bloated paint program for ComputerCraft by Nitrogen Fingers.",
+		message = "NPaintPro: Modified for CCOS by Klipsgoboom, originally made by Nitrogen Fingers.",
 		controls = {
 			{ "Testers:", " "},
 			{ " ", "Faubiguy"},
@@ -577,30 +577,42 @@ end
 	Returns:nil
 ]]--
 local function loadNFA(path)
+	function split(str, sep)
+    local t = {}
+    for part in str:gmatch("[^"..sep.."]+") do
+        t[#t+1] = part
+    end
+    return t
+	end
+
 	frames[sFrame] = { }
 	if fs.exists(path) then
 		local file = io.open(path, "r" )
 		local sLine = file:read()
+		sLine = split(sLine, ",")
 		local num = 1
-		while sLine do
-			table.insert(frames[sFrame], num, {})
-			if sLine == "~" then
-				sFrame = sFrame + 1
-				frames[sFrame] = { }
-				num = 1
-			else
-				for i=1,#sLine do
-					frames[sFrame][num][i] = getColourOf(string.sub(sLine,i,i))
-				end
-				num = num+1
+
+		if fs.exists(path) then
+		    local file = fs.open(path, "r")
+            local allFrames = file.readAll()
+			allFrames = split(allFrames, "|")
+			for j=1, #allFrames do
+				local allLines = split(allFrames[j], ",")
+				frames[j] = {}
+            	for i=1, #allLines do
+					local line = allLines[i]
+					table.insert(frames[j], i, {})
+			    	for x=1,w do
+				    		frames[j][i][x] = getColourOf(string.sub(line,x,x))
+			    	end
+		    	end
+				framecount = j
 			end
-			sLine = file:read()
+			file:close()
 		end
-		file:close()
 	end
-	framecount = sFrame
-	sFrame = 1
 end
+
 
 --[[Saves a non-animated paint file to the specified path
 	Params: path:string = The path to save the file to
@@ -693,9 +705,9 @@ local function saveNFA(path)
 					line = line..getHexOf(frames[i][y][x])
 				end
 			end
-			file:write(line.."\n")
+			file:write(line..",")
 		end
-		if i < #frames then file:write("~\n") end
+		if i < #frames then file:write("|") end
 	end
 	file:close()
 end
