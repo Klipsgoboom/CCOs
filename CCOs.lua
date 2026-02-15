@@ -1,14 +1,20 @@
 buttons = {}
 sprites = {}
+spritesNames = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.6"
+osVersion = "1.0.7"
 ip = nil
 apiKey = nil
 standing = false
 local scene = 0
 yOffset = 0
+
+
+-- Added wallpaper app in settings
+-- Added drop down lists
+-- Added new sprite properties max and min y
 
 function split(str, sep)
     local t = {}
@@ -77,7 +83,8 @@ end
 
 
 if (not fs.exists("lockscreen.nfa")) then
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/drawing.nfa", "lockscreen.nfa")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfa", "lockscreen.nfa")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa")
 end
 
 function clearSprites() 
@@ -111,6 +118,28 @@ function drawObject(object)
             term.setTextColor(args) --just using args for color
             term.write(text)
         end
+        if (typeA == "dropDown") then
+            --type to identify as dropDown
+            --text to have default/current value
+            --args to have all possible results
+            --src to store whether expanded or not
+            -- draw background
+
+            term.setBackgroundColor(colors.gray)
+            term.setTextColor(colors.white)
+            term.setCursorPos(x, y)
+            term.write(string.rep(" ", width))
+            term.setCursorPos(x, y)
+            print(tostring(text))
+
+            if (src == "false") then
+            term.setCursorPos(width, y)
+            print("-")
+            else
+                drawDropDownEntries(x,y,w,h, args)
+            end
+
+        end
         if (typeA == "button") then
             term.setBackgroundColor(colors.gray)
             term.setTextColor(colors.white)
@@ -138,13 +167,26 @@ function drawAllObjects()
     end
 end
 
-function drawButton()
-
+function drawDropDownEntries(x,y,w,h,entriesTable)
+    ogColor = term.getBackgroundColor()
+    term.setCursorPos(width, y)
+    term.setBackgroundColor(colors.gray)
+    print("v")
+    for i=1, #entriesTable do
+            term.setBackgroundColor(colors.lightGray)
+            term.setTextColor(colors.white)
+            term.setCursorPos(x, y+i)
+            term.write(string.rep(" ", width))
+            term.setCursorPos(x, y+i)
+            print(tostring(entriesTable[i]))
+            term.setBackgroundColor(ogColor)
+        end
 end
 
-function createSprite(name, x, y, width, height, typeA, rotation, src, text, args, z, static)
-    spriteObject = {name, x, y, width, height, typeA, rotation, src, text, args, z, static, scene, x, y}
+function createSprite(name, x, y, width, height, typeA, rotation, src, text, args, z, static, minY, maxY)
+    spriteObject = {name, x, y, width, height, typeA, rotation, src, text, args, z, static, scene, x, y, minY, maxY}
     table.insert(sprites, spriteObject)
+    spritesNames[name] = #sprites
     drawObject(#sprites)
 end
 
@@ -159,9 +201,14 @@ function createImage(src)
     createSprite("image", 0, 0, 0, 0, "image", 0, src, 0, 0, 0, true)
 end
 
-function createButton(x,y,w,h,text,args,static)
-    createSprite("btn", x, y, w, h, "button", 0, src, text, args, 0, static)
+function createButton(x,y,w,h,text,args,static, minY, maxY)
+    createSprite("btn", x, y, w, h, "button", 0, 0, text, args, 0, static,minY,maxY)
 end
+
+function createDropDown(name, x,y,w,h,text,args,static, minY, maxY)
+    createSprite(name, x, y, w, h, "dropDown", 0, "false", text, args, 0, static,minY,maxY)
+end
+
 
 function updating()
 clearSprites() 
@@ -201,6 +248,7 @@ function settings()
     createSprite("btn", 1, 4, 12, 3, "button", 0, 0, "Flex", "flexS", 0, true)
     createSprite("btn", 1, 8, 12, 3, "button", 0, 0, "Bluetooth", "bt", 0, true)
     createSprite("btn", 1, 12, 12, 3, "button", 0, 0, "Update", "update", 0, true)
+    createSprite("btn", 1, 16, 12, 3, "button", 0, 0, "Wallpaper", "wallpaper", 0, true)
     createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
 end
 
@@ -291,6 +339,22 @@ local userId = "0635f662c1764b27b665a6b6eda6a685"
     end
 end
 
+function wallpaperSetter()
+    clearSprites()
+    term.setBackgroundColor(colors.black)
+    term.setCursorBlink(false)
+    term.clear()
+    createText(1,1, "Wallpaper Setter", true)
+    createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
+    newList = {"lockscreen.nfa", "abstract.nfa"}
+    newListString = ""
+    for i=1, #newList do
+        newListString = newListString .. newList[i] .. "|"
+    end
+    createDropDown("wallpaperName", 1, 2,15,0, newList[1], newList, false, minY, maxY)
+    createButton(1,10,15,2,"Save","lockscreenWallPaper", true)
+end
+
 
 function flexMenu()
     clearSprites() 
@@ -368,6 +432,9 @@ function processButtonClicks(args, name, i)
     if (args== "settings") then
         settings()
     end
+    if (args== "wallpaper") then
+        wallpaperSetter()
+    end
     if (args == "setDevice") then
         id = string.sub(name, 9, #name)
         setBluetooth(tonumber(id))
@@ -377,6 +444,12 @@ function processButtonClicks(args, name, i)
     end
     if (args == "update") then
         updating()
+    end
+    if (args == "lockscreenWallPaper") then
+        local file = fs.open("lockscreen.setting", "w")
+        file.writeLine(sprites[spritesNames["wallpaperName"]][9])
+        file.close()
+        lockScreen()
     end
     if (args == "flexS") then
         flexS()
@@ -484,7 +557,17 @@ function lockScreen()
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
-    createImage("lockscreen.nfa")
+    local content
+
+    if fs.exists("lockscreen.setting") then
+    local file = fs.open("lockscreen.setting", "r")
+    content = file.readAll()
+    file.close()
+    else
+        content = "lockscreen.nfa"
+    end
+
+    createImage(content)
     createText(1,1, "Appel Os " .. osVersion, true)
     createSprite("btn", 8, 7, 12, 3, "button", 0, 0, "Unlock", "unlock", 0, true)
 end
@@ -549,12 +632,36 @@ function checkWhatButtonWasClicked(event, button, xC, yC, sceneWhenClicked)
         lScene = sprite[13]
         baseX = sprite[14]
         baseY = sprite[15]
-                if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "button") then
-                    if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
-                            processButtonClicks(args, text, i, scene)
+            if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "button") then
+                if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
+                        processButtonClicks(args, text, i, scene)
+                end
+            end
+            if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "dropDown") then
+                --if opening or closing dropdown menu
+                if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
+                        if (src == "false") then
+                        sprite[8] = "true"
+                        drawDropDownEntries(x,y,w,h, args)
+                        else
+                        sprite[8] = "false"
+                        drawAllObjects()
+                        end
+                        break
+                end
+                --if an option is picked
+                if (src == "true") then
+                    for i = 1, #args do
+                        if (y+i==yC and xC >= x and xC <= width) then
+                            sprite[9] = args[i]
+                            sprite[8] = "false"
+                            drawAllObjects()
+                            break
+                        end
                     end
                 end
             end
+        end
         event = nil
         button = nil
         x = nil
@@ -654,43 +761,17 @@ end
 
 lockScreen()
 
-function reDrawButtons()
-    previousColor = term.getBackgroundColor()
-    term.clear()
-    for i=1, #buttons do
-        --buttonObject = {x, y, x+width, y+height, args, text, scene}
-        local x = buttons[i][8]
-        local y = tonumber(buttons[i][9]) + yOffset
-        local width = buttons[i][3]-x
-        local height = buttons[i][4]-tonumber(buttons[i][2])
-        local args = buttons[i][5]
-        local text = buttons[i][6]
-        local scene = scene
-        term.setBackgroundColor(colors.gray)
-        term.setTextColor(colors.white)
-        for i = 0, height-1 do
-            term.setCursorPos(x, y+i)
-            term.write(string.rep(" ", width))
-        end
 
-        local textX = x + math.floor((width - #text) / 2)
-        local textY = y + math.floor(height / 2)
-        term.setCursorPos(textX, textY)
-        term.write(text)
-
-        --update hitbox
-        buttons[i][2] = y
-        buttons[i][4] = height+y
-    end
-    term.setBackgroundColor(previousColor)
-end
-
-function transformNonStaticObjects()
+function transformNonStaticObjects(offset)
     for i, sprite in ipairs(sprites) do
+        absoluteY = sprites[i][15]
         static = sprite[12]
-
-        if (static ~= true) then
-            sprites[i][3] = sprites[i][15] + yOffset
+        minY = sprite[16]
+        maxY = sprite[17]
+        if (static ~= true and (maxY ~= nil and minY ~= nil and absoluteY + yOffset < maxY and absoluteY + yOffset > minY)) then
+            sprites[i][3] = absoluteY + yOffset
+        elseif (static ~=true and (maxY == nil and minY == nil)) then
+            sprites[i][3] = absoluteY + yOffset
         end
     end
 end
@@ -701,10 +782,11 @@ while true do
         local direction = p1
         if direction == 1 then
             yOffset = yOffset - 2
+            transformNonStaticObjects(-2)
         elseif direction == -1 then
             yOffset = yOffset + 2
+            transformNonStaticObjects(2)
         end
-        transformNonStaticObjects()
         drawAllObjects()
     end
     if (event == "mouse_up") then
