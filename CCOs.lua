@@ -84,7 +84,7 @@ end
 
 if (not fs.exists("lockscreen.nfa")) then
 webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfa", "lockscreen.nfa")
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa", "abstract.nfa")
 end
 
 function clearSprites() 
