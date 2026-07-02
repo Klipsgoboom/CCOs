@@ -576,7 +576,7 @@ end
 	Params: path:string = The path in which the file is located
 	Returns:nil
 ]]--
-local function loadNFA(path)
+local function loadNFLA(path)
 	function split(str, sep)
     local t = {}
     for part in str:gmatch("[^"..sep.."]+") do
@@ -685,7 +685,7 @@ end
 	Params: path:string = The path to save the file to
 	Returns:nil
 ]]--
-local function saveNFA(path)
+local function saveNFLA(path)
 	local sDir = string.sub(sPath, 1, #sPath - #fs.getName(sPath))
 	if not fs.exists(sDir) then
 		fs.makeDir(sDir)
@@ -722,7 +722,7 @@ local function init()
 		loadNFT(sPath)
 		table.insert(ddModes, 2, { "text", "textpaint", name = "text"})
 	elseif animated then 
-		loadNFA(sPath)
+		loadNFLA(sPath)
 		table.insert(ddModes, #ddModes, { "record", "play", name = "anim" })
 		table.insert(ddModes, #ddModes, { "go to", "remove", name = "frames"})
 		table.insert(ddModes[2], #ddModes[2], "blueprint on")
@@ -2173,7 +2173,7 @@ local function performSelection(mode)
 		state = "paint"
 		
 	elseif mode == "save" then
-		if animated then saveNFA(sPath)
+		if animated then saveNFLA(sPath)
 		elseif textEnabled then saveNFT(sPath)
 		else saveNFP(sPath) end
 		
@@ -2482,13 +2482,13 @@ if fs.exists(sPath) then
 	if fs.isDir(sPath) then
 		print("Cannot edit a directory.")
 		return
-	elseif string.find(sPath, ".nfp") ~= #sPath-3 and string.find(sPath, ".nfa") ~= #sPath-3 and
+	elseif string.find(sPath, ".nfp") ~= #sPath-3 and string.find(sPath, ".nfla") ~= #sPath-4 and
 			string.find(sPath, ".nft") ~= #sPath-3 then
-		print("Can only edit .nfp, .nft and .nfa files:",string.find(sPath, ".nfp"),#sPath-3)
+			print("Can only edit .nfp, .nft and .nfla files:",string.find(sPath, ".nfp"),#sPath-3)
 		return
 	end
 	
-	if string.find(sPath, ".nfa") == #sPath-3 then
+	if string.find(sPath, ".nfla") == #sPath-3 then
 		animated = true
 	end
 	
@@ -2497,7 +2497,7 @@ if fs.exists(sPath) then
 	end	
 	
 	if string.find(sPath, ".nfp") == #sPath-3 and animated then
-		print("Convert to nfa? Y/N")
+		print("Convert to nfla? Y/N")
 		if string.find(string.lower(io.read()), "y") then
 			local nsPath = string.sub(sPath, 1, #sPath-1).."a"
 			fs.move(sPath, nsPath)
@@ -2508,14 +2508,14 @@ if fs.exists(sPath) then
 	end
 	
 	--Again this is possible, I just haven't done it. Maybe I will?
-	if textEnabled and (string.find(sPath, ".nfp") == #sPath-3 or string.find(sPath, ".nfa") == #sPath-3) then
+	if textEnabled and (string.find(sPath, ".nfp") == #sPath-3 or string.find(sPath, ".nfla") == #sPath-3) then
 		print("Cannot convert to nft")
 	end
 else
 	if not animated and not textEnabled and string.find(sPath, ".nfp") ~= #sPath-3 then 
 		sPath = sPath..".nfp"
-	elseif animated and string.find(sPath, ".nfa") ~= #sPath-3 then 
-		sPath = sPath..".nfa"
+	elseif animated and string.find(sPath, ".nfla") ~= #sPath-3 then 
+		sPath = sPath..".nfla"
 	elseif textEnabled and string.find(sPath, ".nft") ~= #sPath-3 then
 		sPath = sPath..".nft"
 	end

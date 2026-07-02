@@ -4,7 +4,7 @@ spritesNames = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.7"
+osVersion = "1.0.9"
 ip = nil
 apiKey = nil
 standing = false
@@ -82,9 +82,9 @@ file.close()
 end
 
 
-if (not fs.exists("lockscreen.nfa")) then
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfa", "lockscreen.nfa")
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa")
+if (not fs.exists("lockscreen.nfla")) then
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfa", "lockscreen.nfla")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa", "abstract.nfla")
 end
 
 function clearSprites() 
@@ -129,15 +129,18 @@ function drawObject(object)
             term.setTextColor(colors.white)
             term.setCursorPos(x, y)
             term.write(string.rep(" ", width))
-            term.setCursorPos(x, y)
-            print(tostring(text))
 
-            if (src == "false") then
-            term.setCursorPos(width, y)
-            print("-")
-            else
-                drawDropDownEntries(x,y,w,h, args)
-            end
+            if (y < 20) then
+                term.setCursorPos(x, y)
+                print(tostring(text))
+
+                if (src == "false") then
+                    term.setCursorPos(width, y)
+                    print("-")
+                else
+                    drawDropDownEntries(x,y,w,h, args)
+                end
+        end
 
         end
         if (typeA == "button") then
@@ -147,11 +150,18 @@ function drawObject(object)
                 term.setCursorPos(x, y+i)
                 term.write(string.rep(" ", width))
             end
-
             local textX = x + math.floor((width - #text) / 2)
             local textY = y + math.floor(height / 2)
             term.setCursorPos(textX, textY)
-            term.write(text)
+            if (text) then
+                term.write(text)
+            end
+            if (text == "" and args and textEntries[args] ~= nil) then
+                term.setCursorPos(x, textY)
+                term.write(textEntries[args])
+            end
+            
+
         end
         if (typeA == "image") then
             drawImage(src)
@@ -162,7 +172,7 @@ end
 
 function drawAllObjects()
     term.clear()
-    for i=1, #sprites do
+    for i = 1, #sprites do
         drawObject(i)
     end
 end
@@ -323,7 +333,8 @@ end
 
 local function getFlexLibraryItems()
 local userId = "0635f662c1764b27b665a6b6eda6a685"
-     local url = ip.."Users/"..userId.."/Items?ParentId=f6a865777104971fa1a021944a91c9eb&IncludeItemTypes=Audio&Recursive=true"
+
+    local url = ip.."Users/"..userId.."/Items?ParentId=7695f2dd27e7334e8d6957f2c31d3adb&IncludeItemTypes=Audio&Recursive=true"
     local response = http.get(url, { ["X-Emby-Token"] = apiKey })
     if not response then
         print("Failed to fetch library items.")
@@ -346,13 +357,18 @@ function wallpaperSetter()
     term.clear()
     createText(1,1, "Wallpaper Setter", true)
     createSprite("btn", 24, 1, 3, 2, "button", 0, 0, "X", "exit", 0, true)
-    newList = {"lockscreen.nfa", "abstract.nfa"}
+    newList = {"lockscreen.nfla", "abstract.nfla"}
     newListString = ""
     for i=1, #newList do
         newListString = newListString .. newList[i] .. "|"
     end
-    createDropDown("wallpaperName", 1, 2,15,0, newList[1], newList, false, minY, maxY)
-    createButton(1,10,15,2,"Save","lockscreenWallPaper", true)
+    createText(1,3, "Lockscreen", true)
+    createDropDown("wallpaperName", 1, 4,20,0, newList[1], newList, true, minY, maxY)
+    createButton(1,6,15,3,"Save","lockscreenWallPaper", true)
+
+    createText(1,11, "Homescreen", true)
+    createDropDown("homeScreenWallPaper", 1, 12,20,0, newList[1], newList, true, minY, maxY)
+    createButton(1,14,15,3,"Save","homeScreenWall", true)
 end
 
 
@@ -451,6 +467,12 @@ function processButtonClicks(args, name, i)
         file.close()
         lockScreen()
     end
+    if (args == "homeScreenWall") then
+        local file = fs.open("homescreen.setting", "w")
+        file.writeLine(sprites[spritesNames["homeScreenWallPaper"]][9])
+        file.close()
+        homeScreen()
+    end
     if (args == "flexS") then
         flexS()
     end
@@ -460,12 +482,19 @@ function processButtonClicks(args, name, i)
     if (args == "flexSetSettings") then
 
         local file = fs.open("flex.settings", "w")
-        file.writeLine(textEntries["api"] .. "," .. textEntries["url"])
-        file.close()
-        ip = textEntries["url"]
-        apiKey = textEntries["api"]
-        sleep(0.1)
-        homeScreen()
+        if (textEntries["api"] and textEntries["url"]) then
+            file.writeLine(textEntries["api"] .. "," .. textEntries["url"])
+            file.close()
+            ip = textEntries["url"]
+            apiKey = textEntries["api"]
+            sleep(0.1)
+            homeScreen()
+        else
+            term.setTextColor(colors.black)
+            term.setCursorPos(1,1)
+            print("please fill all fields.")
+
+        end
     end
     if (args == "bt") then
         bluetoothMenu()
@@ -536,12 +565,21 @@ function processButtonClicks(args, name, i)
 end
 
 function homeScreen()
+        if fs.exists("homescreen.setting") then
+    local file = fs.open("homescreen.setting", "r")
+    content = file.readAll()
+    file.close()
+    else
+        content = "lockscreen.nfla"
+    end
+
     buttonsWork = false
     peripheral.find("modem", rednet.open)
     clearSprites() 
     term.setBackgroundColor(colors.blue)
     term.setCursorBlink(false)
     term.clear()
+    createImage(content)
     createText(1,1, "Appel Home", true)
     sleep(0.1)
     buttonsWork = true
@@ -549,7 +587,6 @@ function homeScreen()
     createSprite("btn", 15, 3, 12, 3, "button", 0, 0, "Casino", "casino", 0, true)
     createSprite("btn", 1, 7, 12, 3, "button", 0, 0, "Flex", "flexRequest", 0, true)
     --createSprite("btn", 15, 7, 12, 3, "button", 0, 0, "App store", "appStore", 0, true)
-
 end
 
 function lockScreen()
@@ -564,7 +601,7 @@ function lockScreen()
     content = file.readAll()
     file.close()
     else
-        content = "lockscreen.nfa"
+        content = "lockscreen.nfla"
     end
 
     createImage(content)
@@ -632,33 +669,38 @@ function checkWhatButtonWasClicked(event, button, xC, yC, sceneWhenClicked)
         lScene = sprite[13]
         baseX = sprite[14]
         baseY = sprite[15]
-            if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "button") then
-                if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
-                        processButtonClicks(args, text, i, scene)
-                end
-            end
             if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "dropDown") then
                 --if opening or closing dropdown menu
                 if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
                         if (src == "false") then
-                        sprite[8] = "true"
-                        drawDropDownEntries(x,y,w,h, args)
+                            sprite[8] = "true"
+                            drawDropDownEntries(x,y,w,h, args)
                         else
-                        sprite[8] = "false"
-                        drawAllObjects()
+                            sprite[8] = "false"
+                            drawAllObjects()
                         end
                         break
                 end
                 --if an option is picked
                 if (src == "true") then
+                    local ifKilled = false
                     for i = 1, #args do
                         if (y+i==yC and xC >= x and xC <= width) then
                             sprite[9] = args[i]
                             sprite[8] = "false"
                             drawAllObjects()
-                            break
+                            ifKilled = true
                         end
                     end
+                    if (ifKilled == true) then
+                        break
+                    end
+                end
+            end    
+
+            if (sprites[i] ~= nil and scene and sceneWhenClicked == scene and typeA == "button") then
+                if xC >= x and xC <= x+width and yC >= y and yC <= y+height then
+                        processButtonClicks(args, text, i, scene)
                 end
             end
         end
@@ -754,7 +796,7 @@ end
 
 function playAnim()
     for i=1, 7 do
-    drawImage("animation.nfa", i)
+    drawImage("animation.nfla", i)
     sleep(0.2)
     end
 end
