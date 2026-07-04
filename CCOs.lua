@@ -4,17 +4,12 @@ spritesNames = {}
 playerCardsValue = 0
 playerCardsDrawn = 0
 dealerCardsValue = 0
-osVersion = "1.0.9"
+osVersion = "1.0.91"
 ip = nil
 apiKey = nil
 standing = false
 local scene = 0
 yOffset = 0
-
-
--- Added wallpaper app in settings
--- Added drop down lists
--- Added new sprite properties max and min y
 
 function split(str, sep)
     local t = {}
@@ -83,8 +78,8 @@ end
 
 
 if (not fs.exists("lockscreen.nfla")) then
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfa", "lockscreen.nfla")
-webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfa", "abstract.nfla")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/drawing.nfla", "lockscreen.nfla")
+webRequestDownload("https://raw.githubusercontent.com/Klipsgoboom/CCOs/refs/heads/main/artwork/abstract.nfla", "abstract.nfla")
 end
 
 function clearSprites() 
